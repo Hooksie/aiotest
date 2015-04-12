@@ -9,11 +9,19 @@ def simple_add(a, b):
 
 class BasicApiTests(TestCase):
 
-    def test_simple_result(self):
+    def test_simple_equal_result(self):
         self.assertCoroResult(4, simple_add, 2, 2)
 
-    def test_simple_result_incorrect(self):
-        self.assertCoroNotResult(6, simple_add, 2, 2)
+    def test_simple_equal_result_incorrect(self):
+        with self.assertRaises(TestCase.failureException):
+            self.assertCoroResult(20, simple_add, 2, 2)
+
+    def test_simple_unequal_result(self):
+        self.assertCoroNotResult(20, simple_add, 2, 2)
+
+    def test_simple_unequal_result_incorrect(self):
+        with self.assertRaises(TestCase.failureException):
+            self.assertCoroNotResult(4, simple_add, 2, 2)
 
     def test_simple_message(self):
         msg = "What a terrible exception"
