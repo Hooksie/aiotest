@@ -10,6 +10,7 @@ class TestCase(_TestCase):
         super().__init__(*args, **kwargs)
 
         self.event_loop = TestEventLoop()
+        asyncio.set_event_loop(self.event_loop)
 
     def assertCoroResult(self, expected_value, coro, *args, msg=None):
         actual_value = self.event_loop.run_until_complete(coro(*args))

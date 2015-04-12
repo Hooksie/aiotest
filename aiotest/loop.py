@@ -11,6 +11,7 @@ class TimeTravelingTestLoop(asyncio.BaseEventLoop):
 
     def call_later(self, delay, callback, *args):
         print("Dependency injection?")
+        super().call_later(delay, callback, *args)
 
     # FIXME This signature is going to change imminently.  We probably cant do this with the coro.
     def min_time_of(self, coro):
