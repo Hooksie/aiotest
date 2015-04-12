@@ -1,7 +1,7 @@
 import asyncio
 from unittest import TestCase as _TestCase
 
-from aiotest.testloop import TestEventLoop
+from aiotest.loop import TestEventLoop
 
 
 class TestCase(_TestCase):

@@ -1,3 +1,3 @@
-from aiotest.testcase import *
+from aiotest.case import *
 
 __all__ = ['TestCase']
