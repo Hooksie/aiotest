@@ -2,7 +2,7 @@ import asyncio
 from collections import Counter
 
 
-class TimeTravelingTestLoop(asyncio.BaseEventLoop):
+class TimeTravelingTestLoop():
 
     def __init__(self):
         super().__init__()
@@ -11,17 +11,16 @@ class TimeTravelingTestLoop(asyncio.BaseEventLoop):
 
     def call_later(self, delay, callback, *args):
         print("Dependency injection?")
-        super().call_later(delay, callback, *args)
 
     # FIXME This signature is going to change imminently.  We probably cant do this with the coro.
     def min_time_of(self, coro):
         return 0
 
+#
+# # FIXME Chances are good this is a bad idea
+# default_loop = asyncio.get_event_loop().__class__
 
-# FIXME Chances are good this is a bad idea
-default_loop = asyncio.get_event_loop().__class__
-
-class TestEventLoop(default_loop, TimeTravelingTestLoop):
+class TestEventLoop(asyncio.SelectorEventLoop, TimeTravelingTestLoop):
     pass
 
 
