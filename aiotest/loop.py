@@ -113,6 +113,19 @@ class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
         self._ready.append(handle)
         return handle
 
+    def call_soon_threadsafe(self, callback, *args):
+        """
+        Like call_soon(callback, *args) , but when called from another thread
+        while the event loop is blocked waiting for I/O,  unblocks
+        the event loop.
+
+        NOTE: This testable event loop is not meant to be called from
+        multiple threads, so this is a synonym for call_soon().
+        Unit tests should not be written to use threads to avoid
+        non-deterministic behavior - YMMV!
+        """
+        return self.call_soon(callback, *args)
+
     # FIXME This signature is going to change imminently.  We probably cant do this with the coro.
     def min_time_of(self, coro):
         return 0
@@ -126,7 +139,6 @@ class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
     # is_running()
     # close()
     #
-    # call_soon_threadsafe()
     # run_in_executor()
     # set_default_executor()
     # getaddrinfo()

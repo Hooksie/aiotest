@@ -198,6 +198,23 @@ class TimeTravelingTestLoopTest(unittest.TestCase):
 
         self.assertEqual([1, 2, 3, 4, 5], exec_order_list)
 
+    def test_call_soon_threadsafe(self):
+        """
+        Ensure call_soon_threadsafe() schedules things to happen as soon as
+        possible, but in the order scheduled.
+        """
+        exec_order_list = []
+
+        # Interleave call_soon() and call_soon_threadsafe()
+        self.event_loop.call_soon_threadsafe(exec_order_list.append, 1)
+        self.event_loop.call_soon(exec_order_list.append, 2)
+        self.event_loop.call_soon_threadsafe(exec_order_list.append, 3)
+        self.event_loop.call_soon(exec_order_list.append, 4)
+
+        self.event_loop.advance(0)
+
+        self.assertEqual([1, 2, 3, 4], exec_order_list)
+
     def test_handle_cancel(self):
         """
         Ensure handles returned by call_*() can be cancelled.
@@ -206,6 +223,9 @@ class TimeTravelingTestLoopTest(unittest.TestCase):
 
         h1 = self.event_loop.call_soon(exec_order_list.append, 1)
         h1.cancel()
+
+        h1t = self.event_loop.call_soon_threadsafe(exec_order_list.append, 1.5)
+        h1t.cancel()
 
         h2 = self.event_loop.call_later(2, exec_order_list.append, 2)
         h2.cancel()
