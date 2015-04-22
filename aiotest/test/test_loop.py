@@ -87,3 +87,22 @@ class TimeTravelingTestLoopTest(unittest.TestCase):
         self.event_loop.advance(6.0)
 
         self.assertEqual([1234, 2057, 5643], exec_order_list)
+
+    def test_time_advance(self):
+        """
+        Ensure time() and advance() interact correctly.
+        """
+        start = self.event_loop.time()
+        self.event_loop.advance(5.0)
+        self.assertEqual(start + 5.0, self.event_loop.time())
+        self.event_loop.advance(2.0)
+        self.assertEqual(start + 7.0, self.event_loop.time())
+
+    def test_time_advance_invalid(self):
+        """
+        Ensure advance() of a negative value raises ValueError,
+        and the event loop time() is not affected.
+        """
+        start = self.event_loop.time()
+        self.assertRaises(ValueError, self.event_loop.advance, -5.0)
+        self.assertEqual(start, self.event_loop.time())

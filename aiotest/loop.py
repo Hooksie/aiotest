@@ -24,14 +24,33 @@ class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
     """
     def __init__(self):
         self.durations = Counter()
+        #: A heap of all scheduled Handles
         self._scheduled = []
+        #: The current monotonic wall time, in seconds.
+        self._wall = 591282000.0
+
+    def time(self):
+        """
+        Returns the current time according to the event loop's clock. This may
+        be time.time() or time.monotonic() or some other system-specific clock,
+        but it must return a float expressing the time in units of
+        approximately one second since some epoch.
+        """
+        return self._wall
 
     def advance(self, duration):
         """
         Advance the clock of the test loop. Any task that
         was scheduled to run during this time are executed
         in chronological order.
+
+        Raises ValueError if ``duration`` is negative.
         """
+        if duration < 0:
+            raise ValueError("advance() must be given a positive duration")
+
+        self._wall += duration
+
         if self._scheduled:
             t = self._scheduled[0]
             while (t is not None) and (duration > t.delay):
@@ -54,6 +73,13 @@ class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
         # push the scheduled task onto the priority queue.
         heapq.heappush(self._scheduled, task)
 
+    def call_at(self, when, callback, *args):
+        """
+        This is like call_later() , but the time is expressed as an
+        absolute time. Returns a similar Handle.
+        """
+        pass
+
     # FIXME This signature is going to change imminently.  We probably cant do this with the coro.
     def min_time_of(self, coro):
         return 0
@@ -69,7 +95,6 @@ class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
     #
     # call_soon()
     # call_at()
-    # time()
     #
     # call_soon_threadsafe()
     # run_in_executor()
