@@ -16,6 +16,7 @@ class TestableHandleTest(unittest.TestCase):
         self.assertEqual(1.5, t.when)
         self.assertEqual(print, t.callback)
         self.assertEqual([1, 2, 3], t.args)
+        self.assertFalse(t.cancelled)
 
     def test_task_order_lt(self):
         """
@@ -26,6 +27,11 @@ class TestableHandleTest(unittest.TestCase):
 
         self.assertTrue(t1 < t2)
         self.assertFalse(t2 < t1)
+
+    def test_cancel(self):
+        t = loop.TestableHandle(1, print, [])
+        t.cancel()
+        self.assertTrue(t.cancelled)
 
 class TimeTravelingTestLoopTest(unittest.TestCase):
     def setUp(self):
@@ -191,3 +197,25 @@ class TimeTravelingTestLoopTest(unittest.TestCase):
         self.event_loop.advance(6.0)
 
         self.assertEqual([1, 2, 3, 4, 5], exec_order_list)
+
+    def test_handle_cancel(self):
+        """
+        Ensure handles returned by call_*() can be cancelled.
+        """
+        exec_order_list = []
+
+        h1 = self.event_loop.call_soon(exec_order_list.append, 1)
+        h1.cancel()
+
+        h2 = self.event_loop.call_later(2, exec_order_list.append, 2)
+        h2.cancel()
+
+        h3 = self.event_loop.call_at(self.event_loop.time() + 1.0, exec_order_list.append, 3)
+        h3.cancel()
+
+        # Don't cancel this one
+        self.event_loop.call_soon(exec_order_list.append, 5643)
+
+        self.event_loop.advance(6.0)
+
+        self.assertEqual([5643], exec_order_list)
