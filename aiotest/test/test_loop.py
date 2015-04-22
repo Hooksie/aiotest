@@ -162,3 +162,32 @@ class TimeTravelingTestLoopTest(unittest.TestCase):
         self.event_loop.advance(6.0)
 
         self.assertEqual([1234, 2057, 5643, 667], exec_order_list)
+
+    def test_call_soon_no_run(self):
+        """
+        Ensure call_soon() schedules things to happen as soon as
+        possible, but not immediately.
+        """
+        exec_order_list = []
+
+        self.event_loop.call_soon(exec_order_list.append, 1)
+        self.event_loop.call_soon(exec_order_list.append, 2)
+
+        self.assertEqual([], exec_order_list)
+
+    def test_call_soon_in_order(self):
+        """
+        Ensure call_soon() schedules things to happen as soon as
+        possible, but in the order scheduled.
+        """
+        exec_order_list = []
+
+        self.event_loop.call_soon(exec_order_list.append, 1)
+        self.event_loop.call_soon(exec_order_list.append, 2)
+        self.event_loop.call_soon(exec_order_list.append, 3)
+        self.event_loop.call_soon(exec_order_list.append, 4)
+        self.event_loop.call_later(1.0, exec_order_list.append, 5)
+
+        self.event_loop.advance(6.0)
+
+        self.assertEqual([1, 2, 3, 4, 5], exec_order_list)
