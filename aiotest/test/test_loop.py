@@ -13,7 +13,7 @@ class TestableHandleTest(unittest.TestCase):
         including capturing arguments.
         """
         t = loop.TestableHandle(1.5, print, [1,2,3])
-        self.assertEqual(1.5, t.delay)
+        self.assertEqual(1.5, t.when)
         self.assertEqual(print, t.callback)
         self.assertEqual([1, 2, 3], t.args)
 
@@ -106,3 +106,59 @@ class TimeTravelingTestLoopTest(unittest.TestCase):
         start = self.event_loop.time()
         self.assertRaises(ValueError, self.event_loop.advance, -5.0)
         self.assertEqual(start, self.event_loop.time())
+
+    def test_call_at_not_run(self):
+        """
+        Advancing the wall clock before a scheduled call_at should not
+        cause this task to being run.
+        """
+        time = self.event_loop.time()
+        event_list = []
+
+        self.event_loop.call_at(time + 1.0, event_list.append, 1)
+        self.event_loop.advance(0.5)
+
+        self.assertEqual([], event_list)
+
+    def test_call_at_advance_run(self):
+        """
+        Advancing the wall clock after a scheduled call_at should
+        cause this task to be run.
+        """
+        time = self.event_loop.time()
+        event_list = []
+
+        self.event_loop.call_at(time + 1.0, event_list.append, 1)
+        self.event_loop.advance(1.5)
+
+        self.assertEqual([1], event_list)
+
+    def test_call_at_advance_run_exact(self):
+        """
+        Advancing the wall clock to the exact scheduled time should
+        cause this task to be run.
+        """
+        time = self.event_loop.time()
+        event_list = []
+
+        self.event_loop.call_at(time + 1.0, event_list.append, 1)
+        self.event_loop.advance(1.0)
+
+        self.assertEqual([1], event_list)
+
+    def test_call_at_and_later_advance_run_in_order(self):
+        """
+        If multiple callbacks are scheduled, mixing call_later() and call_at(),
+        and multiple would have been called in the time advance()'d,
+        they should be executed in chronological order.
+        """
+        exec_order_list = []
+
+        self.event_loop.call_later(5.0, exec_order_list.append, 5643)
+        self.event_loop.call_later(4.0, exec_order_list.append, 1234)
+        self.event_loop.call_later(4.5, exec_order_list.append, 2057)
+        self.event_loop.call_at(self.event_loop.time() + 6.0, exec_order_list.append, 667)
+
+        self.event_loop.advance(6.0)
+
+        self.assertEqual([1234, 2057, 5643, 667], exec_order_list)

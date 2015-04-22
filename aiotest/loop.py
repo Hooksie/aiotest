@@ -7,13 +7,13 @@ class TestableHandle:
     """
     A testable Handle implementation
     """
-    def __init__(self, delay, callback, args):
-        self.delay = delay
+    def __init__(self, when, callback, args):
+        self.when = when
         self.callback = callback
         self.args = args
 
     def __lt__(self, other_task):
-        return self.delay < other_task.delay
+        return self.when < other_task.when
 
 
 class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
@@ -52,8 +52,10 @@ class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
         self._wall += duration
 
         if self._scheduled:
+            # Pull out and run all scheduled events corresponding to the
+            # current wall time.
             t = self._scheduled[0]
-            while (t is not None) and (duration > t.delay):
+            while (t is not None) and (self._wall >= t.when):
                 t.callback(*t.args)
                 heapq.heappop(self._scheduled)
                 t = self._scheduled[0] if len(self._scheduled) else None
@@ -68,17 +70,17 @@ class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
         Callbacks scheduled in the past or at exactly the same time will
         be called in an undefined order.
         """
-        # keep track of the callbacks and delays for each.
-        task = TestableHandle(delay, callback, args)
-        # push the scheduled task onto the priority queue.
-        heapq.heappush(self._scheduled, task)
+        self.call_at(self.time() + delay, callback, *args)
 
     def call_at(self, when, callback, *args):
         """
         This is like call_later() , but the time is expressed as an
         absolute time. Returns a similar Handle.
         """
-        pass
+        # keep track of the callbacks and delays for each.
+        task = TestableHandle(when, callback, args)
+        # push the scheduled task onto the priority queue.
+        heapq.heappush(self._scheduled, task)
 
     # FIXME This signature is going to change imminently.  We probably cant do this with the coro.
     def min_time_of(self, coro):
