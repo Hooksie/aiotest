@@ -254,6 +254,25 @@ class TestLoopCoroutineTests(unittest.TestCase):
 
         self.event_loop.run_until_complete(hello())
 
+    def test_assert_coroutine_sleep(self):
+        calls = []
+
+        @asyncio.coroutine
+        def takes_5_seconds():
+            yield from asyncio.sleep(5, loop=self.event_loop)
+            calls.append(5)
+
+        future = asyncio.async(takes_5_seconds(), loop=self.event_loop)
+
+        self.event_loop.advance(4)
+        self.assertFalse(future.done())
+        self.event_loop.advance(56)
+        self.assertTrue(future.done())
+
+        self.assertEqual(calls, [5])
+
+        # This doesn't work, but for understandable reason.  But should it?
+        # self.event_loop.run_until_complete(takes_5_seconds())
 
 class TestLoopRealtimeTests(unittest.TestCase):
 

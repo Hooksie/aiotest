@@ -73,31 +73,44 @@ class TimeTravelingTestLoop(asyncio.base_events.BaseEventLoop):
         # we finish advancing.
         travel_to = self._wall + duration
 
-        if self._scheduled:
-            # Pull out all scheduled events corresponding to the
-            # current wall time, and place them on the ready FIFO.
-            t = self._scheduled[0]
+        # Because we're moving through time, we cant assume that our first check in the scheduled heap
+        # will reveal everything that would occur before our travel_to time.  That's because we may, for example,
+        # exhaust our scheduled heap, only for tasks to introduce new items to it while they're being run.  Those
+        # new items might be under our travel_to time.
+        #
+        # Once we reach a point where our _ready queue is empty, we know we won't be adding anything back
+        # into the schedule, and we can safely get out.
+        while True:
+            if self._scheduled:
+                # Pull out all scheduled events corresponding to the
+                # current wall time, and place them on the ready FIFO.
+                t = self._scheduled[0]
 
-            # We move ahead to each scheduled task that happens before our
-            # total advance duration has passed.
-            while (t is not None) and (travel_to >= t._when):
-                # Don't bother putting canceled tasks on the ready FIFO.
-                if not t._cancelled:
-                    self._ready.append(t)
-                heapq.heappop(self._scheduled)
-                t = self._scheduled[0] if len(self._scheduled) else None
+                # We move ahead to each scheduled task that happens before our
+                # total advance duration has passed.
+                while (t is not None) and (travel_to >= t._when):
+                    # Don't bother putting canceled tasks on the ready FIFO.
+                    if not t._cancelled:
+                        self._ready.append(t)
+                    heapq.heappop(self._scheduled)
+                    t = self._scheduled[0] if len(self._scheduled) else None
 
-        # Execute all non-cancelled Handles on the ready FIFO.
-        while self._ready:
-            handle = self._ready.popleft()
-            try:
-                self._wall = handle._when
-            except AttributeError:
-                # Not all handles will have a _when, and that's OK.
-                pass
+            if self._ready:
+                # Execute all non-cancelled Handles on the ready FIFO.
+                while self._ready:
+                    handle = self._ready.popleft()
+                    try:
+                        self._wall = handle._when
+                    except AttributeError:
+                        # Not all handles will have a _when, and that's OK.
+                        pass
 
-            if not handle._cancelled:
-                handle._run()
+                    if not handle._cancelled:
+                        handle._run()
+
+            # We now know there's nothing that could be added back into our schedule.
+            else:
+                break
 
         self._wall = travel_to
 
