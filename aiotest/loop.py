@@ -1,7 +1,6 @@
 import asyncio
 import heapq
-from collections import Counter
-from collections import deque
+
 
 class TestableHandle:
     """
@@ -22,20 +21,33 @@ class TestableHandle:
         """
         self.cancelled = True
 
-class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
+class TimeTravelingTestLoop(asyncio.BaseEventLoop):
     """
     A testable PEP-3156 event loop implementation.  It does not
     support true network capabilities, but is capable of traveling
     forward in time in a deterministic manner.
     """
     def __init__(self):
-        self.durations = Counter()
+        super().__init__()
+
+        # self.durations = Counter()
         #: A heap of all time-scheduled Handles
-        self._scheduled = []
+        # self._scheduled = []
         #: A FIFO of ready-to-run Handles
-        self._ready = deque()
+        # self._ready = deque()
         #: The current monotonic wall time, in seconds.
         self._wall = 591282000.0
+        #: When specific coroutines last yielded to the event loop.
+        self._call_calender = {}
+
+    def _run_once(self):
+        """
+        Run a "single iteration" of the event loop.
+
+        Really, we're going to just run everything that can be run at this exact
+        moment in time.
+        """
+        self.advance(0)
 
     def time(self):
         """
@@ -63,9 +75,9 @@ class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
             # Pull out all scheduled events corresponding to the
             # current wall time, and place them on the ready FIFO.
             t = self._scheduled[0]
-            while (t is not None) and (self._wall >= t.when):
+            while (t is not None) and (self._wall >= t._when):
                 # Don't bother putting canceled tasks on the ready FIFO.
-                if not t.cancelled:
+                if not t._cancelled:
                     self._ready.append(t)
                 heapq.heappop(self._scheduled)
                 t = self._scheduled[0] if len(self._scheduled) else None
@@ -73,45 +85,8 @@ class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
         # Execute all non-cancelled Handles on the ready FIFO.
         while self._ready:
             handle = self._ready.popleft()
-            if not handle.cancelled:
-                handle.callback(*handle.args)
-
-    def call_later(self, delay, callback, *args):
-        """
-        Arrange for callback(*args) to be called approximately delay
-        seconds in the future, once, unless cancelled.
-        Returns a Handle representing the callback,
-        whose cancel() method can be used to cancel the callback.
-
-        Callbacks scheduled in the past or at exactly the same time will
-        be called in an undefined order.
-        """
-        return self.call_at(self.time() + delay, callback, *args)
-
-    def call_at(self, when, callback, *args):
-        """
-        This is like call_later(), but the time is expressed as an
-        absolute time. Returns a similar Handle.
-        """
-        # keep track of the callbacks and delays for each.
-        task = TestableHandle(when, callback, args)
-        # push the scheduled task onto the priority queue.
-        heapq.heappush(self._scheduled, task)
-        return task
-
-    def call_soon(self, callback, *args):
-        """
-        This schedules a callback to be called as soon as possible.
-        Returns a Handle (see below) representing the callback, whose cancel()
-        method can be used to cancel the callback. It guarantees that callbacks
-        are called in the order in which they were scheduled.
-        """
-        # All tasks are put at the end of the ready FIFO, immediately.
-        # This guarantees that they will be called in order, as soon as possible.
-        # when=0 because we don't care what the value is (already on the ready FIFO)
-        handle = TestableHandle(0, callback, args)
-        self._ready.append(handle)
-        return handle
+            if not handle._cancelled:
+                handle._run()
 
     def call_soon_threadsafe(self, callback, *args):
         """
@@ -126,9 +101,6 @@ class TimeTravelingTestLoop(asyncio.AbstractEventLoop):
         """
         return self.call_soon(callback, *args)
 
-    # FIXME This signature is going to change imminently.  We probably cant do this with the coro.
-    def min_time_of(self, coro):
-        return 0
 
     # Missing mandatory APIs from PEP 3156:
     # -----

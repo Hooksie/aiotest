@@ -239,3 +239,17 @@ class TimeTravelingTestLoopTest(unittest.TestCase):
         self.event_loop.advance(6.0)
 
         self.assertEqual([5643], exec_order_list)
+
+
+class TestLoopCoroutineTests(unittest.TestCase):
+
+    def setUp(self):
+        self.event_loop = loop.TimeTravelingTestLoop()
+
+    def test_run_coroutine(self):
+
+        @asyncio.coroutine
+        def hello():
+            return 1 + 1
+
+        self.event_loop.run_until_complete(hello())
