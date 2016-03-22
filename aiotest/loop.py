@@ -21,7 +21,7 @@ class TestableHandle:
         """
         self.cancelled = True
 
-class TimeTravelingTestLoop(asyncio.BaseEventLoop):
+class TimeTravelingTestLoop(asyncio.base_events.BaseEventLoop):
     """
     A testable PEP-3156 event loop implementation.  It does not
     support true network capabilities, but is capable of traveling
