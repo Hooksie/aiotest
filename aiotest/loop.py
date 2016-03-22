@@ -112,6 +112,9 @@ class TimeTravelingTestLoop(asyncio.base_events.BaseEventLoop):
             else:
                 break
 
+        # Make sure that we've caught up to exactly the point in time we want to be.
+        # aka: make sure the wall clock is set right when we've advanced past our latest scheduled
+        # task.
         self._wall = travel_to
 
     def call_soon_threadsafe(self, callback, *args):
