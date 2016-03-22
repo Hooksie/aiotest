@@ -69,13 +69,18 @@ class TimeTravelingTestLoop(asyncio.base_events.BaseEventLoop):
         if duration < 0:
             raise ValueError("advance() must be given a positive duration")
 
-        self._wall += duration
+        # The time on the wall clock we want to be at when
+        # we finish advancing.
+        travel_to = self._wall + duration
 
         if self._scheduled:
             # Pull out all scheduled events corresponding to the
             # current wall time, and place them on the ready FIFO.
             t = self._scheduled[0]
-            while (t is not None) and (self._wall >= t._when):
+
+            # We move ahead to each scheduled task that happens before our
+            # total advance duration has passed.
+            while (t is not None) and (travel_to >= t._when):
                 # Don't bother putting canceled tasks on the ready FIFO.
                 if not t._cancelled:
                     self._ready.append(t)
@@ -85,8 +90,16 @@ class TimeTravelingTestLoop(asyncio.base_events.BaseEventLoop):
         # Execute all non-cancelled Handles on the ready FIFO.
         while self._ready:
             handle = self._ready.popleft()
+            try:
+                self._wall = handle._when
+            except AttributeError:
+                # Not all handles will have a _when, and that's OK.
+                pass
+
             if not handle._cancelled:
                 handle._run()
+
+        self._wall = travel_to
 
     def call_soon_threadsafe(self, callback, *args):
         """

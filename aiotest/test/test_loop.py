@@ -253,3 +253,32 @@ class TestLoopCoroutineTests(unittest.TestCase):
             return 1 + 1
 
         self.event_loop.run_until_complete(hello())
+
+
+class TestLoopRealtimeTests(unittest.TestCase):
+
+    def setUp(self):
+        self.event_loop = loop.TimeTravelingTestLoop()
+
+    def test_real_wall(self):
+        """
+        Ensure that tasks called at given times think they are actually being called at that time.
+
+        There's some real world leeway here: You aren't always guaranteed to get called to seconds
+        later after a call_later(2.0, ...), but it's better than the alternative here of getting
+        "called" at the full advanced wall time.
+        """
+        start_time = self.event_loop.time()
+        call_times = []
+
+        def event_loop_time():
+            # We're going to subtract away the start to to get the "time delta from start",
+            # just so asserting is easier later.
+            call_times.append(self.event_loop.time() - start_time)
+
+        self.event_loop.call_later(2.0, event_loop_time)
+        self.event_loop.call_later(5.0, event_loop_time)
+        self.event_loop.call_later(8.0, event_loop_time)
+        self.event_loop.advance(20.0)
+
+        self.assertEqual(call_times, [2.0, 5.0, 8.0])
