@@ -1,5 +1,6 @@
 import asyncio
 import heapq
+import operator
 
 
 class TestableHandle:
@@ -47,7 +48,7 @@ class TimeTravelingTestLoop(asyncio.base_events.BaseEventLoop):
         Really, we're going to just run everything that can be run at this exact
         moment in time.
         """
-        self.advance(0)
+        self.advance()
 
     def time(self):
         """
@@ -58,7 +59,7 @@ class TimeTravelingTestLoop(asyncio.base_events.BaseEventLoop):
         """
         return self._wall
 
-    def advance(self, duration):
+    def advance(self, duration=0, inclusive=True):
         """
         Advance the clock of the test loop. Any task that
         was scheduled to run during this time are executed
@@ -72,6 +73,15 @@ class TimeTravelingTestLoop(asyncio.base_events.BaseEventLoop):
         # The time on the wall clock we want to be at when
         # we finish advancing.
         travel_to = self._wall + duration
+
+        # Inclusive means we'll accept tasks as ready if they are supposed to run up to or at our travel_to time.
+        # Otherwise, when we're not inclusive, we only mark them as ready if they should run before our travel_to time.
+        if inclusive:
+            # Using >=
+            comparator = operator.ge
+        else:
+            # Use >
+            comparator = operator.gt
 
         # Because we're moving through time, we cant assume that our first check in the scheduled heap
         # will reveal everything that would occur before our travel_to time.  That's because we may, for example,
@@ -88,7 +98,8 @@ class TimeTravelingTestLoop(asyncio.base_events.BaseEventLoop):
 
                 # We move ahead to each scheduled task that happens before our
                 # total advance duration has passed.
-                while (t is not None) and (travel_to >= t._when):
+                #
+                while (t is not None) and comparator(travel_to, t._when):
                     # Don't bother putting canceled tasks on the ready FIFO.
                     if not t._cancelled:
                         self._ready.append(t)

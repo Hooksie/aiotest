@@ -301,3 +301,24 @@ class TestLoopRealtimeTests(unittest.TestCase):
         self.event_loop.advance(20.0)
 
         self.assertEqual(call_times, [2.0, 5.0, 8.0])
+
+
+class TestLoopInclusionTests(unittest.TestCase):
+
+    def setUp(self):
+        self.event_loop = loop.TimeTravelingTestLoop()
+
+    def test_non_inclusive_advance(self):
+        calls = []
+
+        self.event_loop.call_later(4.0, calls.append, 4.0)
+        self.event_loop.advance(4.0, inclusive=False)
+        self.assertEqual(calls, [])
+        self.event_loop.advance()
+        self.assertEqual(calls, [4.0])
+
+        # self.event_loop.call_later(5.0, calls.append, 5.0)
+        # self.event_loop.advance(1.0, inclusive=False)
+        # self.assertEqual(calls, [4.0])
+
+        # self.assertEqual([1234, 2057, 5643, 667], exec_order_list)
